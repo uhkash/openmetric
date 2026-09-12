@@ -1,0 +1,19 @@
+services:
+  openmetric:
+    build: .
+    # Bound to localhost on purpose. Change this only together with
+    # OPENMETRIC_ADMIN_TOKEN - an open port here can spend your money.
+    ports:
+      - "127.0.0.1:8099:8099"
+    environment:
+      # Required. Generate with:
+      #   python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+      OPENMETRIC_SECRET_KEY: ${OPENMETRIC_SECRET_KEY:?set OPENMETRIC_SECRET_KEY in your .env}
+      OPENMETRIC_ADMIN_TOKEN: ${OPENMETRIC_ADMIN_TOKEN:-}
+      OPENMETRIC_DATABASE_URL: sqlite:////data/openmetric.db
+    volumes:
+      - openmetric-data:/data
+    restart: unless-stopped
+
+volumes:
+  openmetric-data:

@@ -1,0 +1,30 @@
+# gitleaks configuration for OpenMetric.
+#
+# The default ruleset does the heavy lifting. The allowlist below exists because
+# this project necessarily *talks about* key formats: the redaction patterns, the
+# test fixtures and the documentation all contain key-shaped strings on purpose.
+
+title = "OpenMetric"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deliberate, non-secret key-shaped strings"
+paths = [
+  '''tests/.*''',                       # fixtures use obviously fake values
+  '''src/openmetric/redaction\.py''',   # detection patterns, not secrets
+  '''README\.md''',
+  '''SECURITY\.md''',
+  '''CONTRIBUTING\.md''',
+  '''\.env\.example''',
+  '''docs/.*''',
+  '''examples/.*''',
+]
+regexes = [
+  '''THIS-IS-A-TEST-KEY''',
+  '''SUPERSECRETVALUE''',
+  '''sk-or-v1-xxx''',
+  '''your-key-here''',
+  '''demo-[0-9a-f]{32}''',              # openmetric demo generates these locally
+]

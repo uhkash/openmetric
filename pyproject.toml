@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openmetric"
+version = "0.1.0"
+description = "Self-hosted gateway that puts every API key you use behind one endpoint and tells you what each project actually costs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["llm", "openrouter", "openai", "api-gateway", "cost-tracking", "observability", "finops"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Monitoring",
+]
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "httpx>=0.26",
+  "sqlalchemy>=2.0",
+  "cryptography>=42.0",
+  "typer>=0.12",
+  "rich>=13.0",
+  "pyyaml>=6.0",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/uhkash/openmetric"
+Issues = "https://github.com/uhkash/openmetric/issues"
+
+[project.scripts]
+openmetric = "openmetric.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openmetric"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]

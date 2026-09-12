@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenMetric</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">Open<span>Metric</span></div>
+    <div class="tagline">every key, every project, one number</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="filters">
+    <select id="f-days">
+      <option value="1">Last 24h</option>
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="365">Last year</option>
+    </select>
+    <select id="f-project"><option value="">All projects</option></select>
+    <select id="f-use-case"><option value="">All use cases</option></select>
+    <select id="f-provider"><option value="">All providers</option></select>
+    <button id="refresh" class="primary">Refresh</button>
+    <button id="export">Export CSV</button>
+  </div>
+</header>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>Spend over time
+      <select id="ts-dimension">
+        <option value="project">by project</option>
+        <option value="use_case">by use case</option>
+        <option value="provider">by provider</option>
+        <option value="model">by model</option>
+        <option value="credential">by key</option>
+      </select>
+      <select id="ts-bucket">
+        <option value="day" selected>daily</option>
+        <option value="hour">hourly</option>
+        <option value="month">monthly</option>
+      </select>
+      <select id="ts-metric">
+        <option value="cost_usd">cost</option>
+        <option value="requests">requests</option>
+        <option value="total_tokens">tokens</option>
+      </select>
+    </h2>
+    <p class="hint">Stacked. Hover a band for the exact figure.</p>
+    <div id="chart"></div>
+    <div class="legend" id="chart-legend"></div>
+  </div>
+
+  <div class="card">
+    <h2>Blindspots <span id="blindspot-count"></span></h2>
+    <p class="hint">What the numbers above are not telling you.</p>
+    <div id="blindspots"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Breakdown
+        <select id="group-dimension">
+          <option value="project">by project</option>
+          <option value="use_case">by use case</option>
+          <option value="provider">by provider</option>
+          <option value="model">by model</option>
+          <option value="credential">by key</option>
+          <option value="operation">by operation</option>
+          <option value="cost_source">by price source</option>
+        </select>
+        <select id="group-order">
+          <option value="cost_usd">sort by cost</option>
+          <option value="requests">sort by requests</option>
+          <option value="tokens">sort by tokens</option>
+          <option value="errors">sort by errors</option>
+          <option value="latency">sort by latency</option>
+        </select>
+      </h2>
+      <p class="hint">Same events, different angle.</p>
+      <div class="scroll"><table id="group-table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Cross-tab
+        <select id="matrix-rows">
+          <option value="project">projects</option>
+          <option value="use_case">use cases</option>
+          <option value="provider">providers</option>
+          <option value="model">models</option>
+          <option value="credential">keys</option>
+        </select>
+        <span class="muted">x</span>
+        <select id="matrix-cols">
+          <option value="use_case">use cases</option>
+          <option value="provider" selected>providers</option>
+          <option value="model">models</option>
+          <option value="project">projects</option>
+          <option value="credential">keys</option>
+        </select>
+        <select id="matrix-metric">
+          <option value="cost_usd">cost</option>
+          <option value="requests">requests</option>
+          <option value="tokens">tokens</option>
+          <option value="errors">errors</option>
+          <option value="avg_latency_ms">avg latency</option>
+        </select>
+      </h2>
+      <p class="hint">Which project spends what, with whom.</p>
+      <div class="scroll"><table id="matrix-table" class="heat"></table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Budgets</h2>
+    <p class="hint">Month to date, against the limits you set per project.</p>
+    <div class="scroll"><table id="budget-table"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Recent calls</h2>
+    <p class="hint">The raw tail. No prompt or response text is stored unless you turn it on.</p>
+    <div class="scroll"><table id="events-table"></table></div>
+  </div>
+</main>
+
+<footer>
+  OpenMetric runs entirely on your machine. Keys are encrypted at rest and never
+  returned by the API. &middot; <a href="/docs">API docs</a>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+# --- OpenMetric: secrets & local state must NEVER be committed ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+*.db
+# SQLite runs in WAL mode: these two siblings hold live database contents too.
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+# Root-anchored: this is a local data directory, NOT src/openmetric/data
+# (which is packaged catalog content and must be committed).
+/data/
+exports/
+*.csv
+!tests/fixtures/*.csv
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
