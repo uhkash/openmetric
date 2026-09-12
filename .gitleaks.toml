@@ -20,6 +20,7 @@ paths = [
   '''\.env\.example''',
   '''docs/.*''',
   '''examples/.*''',
+  '''site/.*''',
 ]
 regexes = [
   '''THIS-IS-A-TEST-KEY''',

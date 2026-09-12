@@ -1,0 +1,23 @@
+# One-click deploy of the gateway itself (not the website) on Render.
+# The website deploys to Vercel from ./site; see README "Deploying".
+services:
+  - type: web
+    name: openmetric
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: openmetric-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: OPENMETRIC_SECRET_KEY
+        sync: false          # paste yours in the Render dashboard; never commit it
+      - key: OPENMETRIC_ADMIN_TOKEN
+        sync: false          # required: this instance is reachable from the internet
+      - key: OPENMETRIC_DATABASE_URL
+        value: sqlite:////data/openmetric.db
+      - key: OPENMETRIC_HOST
+        value: 0.0.0.0
+      - key: OPENMETRIC_PORT
+        value: "8099"

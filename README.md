@@ -14,6 +14,14 @@ Self-hosted. Your keys and your usage data never leave your machine.
 
 </div>
 
+> **Would rather not run it yourself?** OpenMetric Cloud — the same gateway, hosted, with
+> teams and alerts — is in early access. [Join the waitlist](https://github.com/uhkash/openmetric/issues/new?title=Cloud%20waitlist&labels=cloud-waitlist).
+> The self-hosted version stays complete, MIT-licensed, and gate-free. [How that works →](docs/DISTRIBUTION.md)
+
+<div align="center">
+
+</div>
+
 ---
 
 ## The problem
@@ -236,12 +244,26 @@ Everything is environment variables — see [.env.example](.env.example).
 | `OPENMETRIC_LOG_RESPONSE_BODIES` | `false` | Store response text. Off for a reason |
 | `OPENMETRIC_EVENT_RETENTION_DAYS` | `0` (forever) | Used by `openmetric prune` |
 
-## Docker
+## Deploying
+
+There are two deployable things here, and they go to different places:
+
+| What | Where | How |
+|---|---|---|
+| **The gateway** (`src/openmetric`) | Your laptop, Docker, Render, Railway, Fly — anywhere with a disk and a long-lived process | `docker compose up -d`, or the one-click [`render.yaml`](render.yaml) |
+| **The website** (`site/`) | Vercel (or any static host) | `vercel` from the repo root; [`vercel.json`](vercel.json) points at `site/` |
+
+The gateway is a streaming proxy with a SQLite file. It does not belong on serverless
+functions: they have no persistent disk and cut long streaming responses off. If you
+expose it beyond localhost, set `OPENMETRIC_ADMIN_TOKEN`.
 
 ```bash
 cp .env.example .env          # then fill in OPENMETRIC_SECRET_KEY
 docker compose up -d
 ```
+
+Releases: tag `vX.Y.Z` and the [`Release`](.github/workflows/release.yml) workflow
+publishes to PyPI (via trusted publishing) and creates a GitHub release.
 
 ## Built-in providers
 
@@ -291,6 +313,15 @@ If everything you run goes through one OpenRouter account with one key per proje
 provider's dashboard may already be enough for you. The full, sourced comparison — what
 each tool does, where it stops, and what would make this project unnecessary — is in
 [docs/POSITIONING.md](docs/POSITIONING.md).
+
+## Why is this free, and how does it make money?
+
+Because the people it is for — one builder, several projects — are exactly the people who
+should not have to pay to see their own spend. The self-hosted gateway is the whole
+product with no gates. Revenue comes from a hosted version for people who would rather
+not run it, and from team features that only make sense with a server: shared projects,
+SSO, alerts, reconciliation. Nothing in this repo phones home, and nothing in it will be
+removed to sell it back to you. The full plan is in [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
 
 ## What this is not
 
