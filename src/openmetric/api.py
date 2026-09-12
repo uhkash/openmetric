@@ -376,14 +376,99 @@ def revoke_virtual_key(key_id: int, db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------------------- #
+# Onboarding
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/setup", dependencies=[admin])
+def setup_status(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Where a new install is in its first-run journey. Drives the Setup tab."""
+    settings = get_settings()
+    events = db.scalar(select(func.count(RequestEvent.id))) or 0
+    credentials = (
+        db.scalar(select(func.count(Credential.id)).where(Credential.active.is_(True))) or 0
+    )
+    virtual_keys = (
+        db.scalar(select(func.count(VirtualKey.id)).where(VirtualKey.active.is_(True))) or 0
+    )
+    projects = db.scalar(select(func.count(Project.id)).where(Project.archived.is_(False))) or 0
+    first_event = db.scalar(select(func.min(RequestEvent.created_at)))
+    last_event = db.scalar(select(func.max(RequestEvent.created_at)))
+    unpriced_providers = [
+        row[0]
+        for row in db.execute(
+            select(Provider.slug)
+            .join(RequestEvent, RequestEvent.provider_id == Provider.id)
+            .where(RequestEvent.cost_source == "unknown", RequestEvent.model == "")
+            .group_by(Provider.slug)
+        ).all()
+    ]
+    steps = [
+        {
+            "id": "encryption",
+            "title": "Encryption key configured",
+            "done": bool(settings.secret_key),
+            "hint": "Run `openmetric init` to generate one into .env.",
+        },
+        {
+            "id": "credential",
+            "title": "First provider key stored",
+            "done": credentials > 0,
+            "hint": "Add one below, or `openmetric key add openrouter --label personal`.",
+        },
+        {
+            "id": "virtual_key",
+            "title": "First virtual key issued",
+            "done": virtual_keys > 0,
+            "hint": "Issue one per project below. Your app uses it instead of a provider key.",
+        },
+        {
+            "id": "first_request",
+            "title": "First request measured",
+            "done": events > 0,
+            "hint": "Point an SDK at this gateway and make one call.",
+        },
+        {
+            "id": "pricing",
+            "title": "Every provider priced",
+            "done": events > 0 and not unpriced_providers,
+            "hint": (
+                "Set a rate for: " + ", ".join(unpriced_providers)
+                if unpriced_providers
+                else "Set per-request rates for scraping and search providers."
+            ),
+        },
+    ]
+    return {
+        "complete": all(step["done"] for step in steps),
+        "steps": steps,
+        "counts": {
+            "events": events,
+            "credentials": credentials,
+            "virtual_keys": virtual_keys,
+            "projects": projects,
+        },
+        "first_event_at": first_event.isoformat() if first_event else None,
+        "last_event_at": last_event.isoformat() if last_event else None,
+        "unpriced_providers": unpriced_providers,
+        "gateway": {"host": settings.host, "port": settings.port},
+        "admin_token_set": bool(settings.admin_token),
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Analytics
 # --------------------------------------------------------------------------- #
 
 
 @router.get("/analytics/summary", dependencies=[admin])
 def analytics_summary(
-    filters: analytics.Filters = Depends(_filters), db: Session = Depends(get_db)
+    compare: bool = Query(False, description="Include the previous period and % deltas."),
+    filters: analytics.Filters = Depends(_filters),
+    db: Session = Depends(get_db),
 ):
+    if compare:
+        return analytics.summary_with_comparison(db, filters)
     return analytics.summary(db, filters)
 
 

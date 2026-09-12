@@ -47,7 +47,7 @@ your app ──▶ OpenMetric ──▶ OpenRouter / OpenAI / Firecrawl / Serper
 - **Every call is priced.** Token counts from the response, multiplied by a rate catalog —
   or the provider's own reported cost when it gives one.
 - **Slice it any way.** project × provider, use case × model, key × day. Same events,
-  whichever angle the question needs.
+  whichever angle the question needs. Click anything to drill into it.
 - **Blindspots.** The part most dashboards skip: what your usage data is *wrong* about.
 
 ## Quickstart
@@ -64,6 +64,13 @@ openmetric serve           # http://127.0.0.1:8099
 
 `openmetric demo` generates entirely fake traffic and fake keys. It touches nothing real.
 Wipe it whenever you like with `rm openmetric.db`.
+
+Skip the demo and the dashboard opens on a first-run screen instead: a setup checklist,
+a copy-paste snippet, and a listener that flips into the real dashboard the moment your
+first request lands. Projects, provider keys and virtual keys can all be created from the
+**Setup** tab — the CLI is optional.
+
+![First run](docs/first-run.png)
 
 ### Point a real project at it
 
@@ -139,6 +146,23 @@ openmetric price set firecrawl --per-request 0.002
 
 Until you do, those calls are counted but reported as **unpriced** rather than quietly
 added up as $0. See below.
+
+## The dashboard
+
+Three views, one filter row that scopes all of them, and a URL that carries the whole
+state so any view is a link you can send yourself later.
+
+- **Overview** — spend, requests, error rate, p95 latency, each with a delta against the
+  previous period; spend over time stacked by any dimension with one tooltip listing
+  every series; blindspots; budgets.
+- **Explore** — the breakdown table and the cross-tab. Click a row or a cell and
+  everything filters to it. Model and key filters show as removable chips.
+- **Setup** — checklist, connection snippets in four languages, and forms for projects,
+  provider keys and virtual keys.
+
+It is plain HTML, CSS and JavaScript with no build step and no CDN, so it works offline
+and can be read in an afternoon. The colour palette is validated for colour-vision
+deficiency in both light and dark mode, and every chart has a table twin.
 
 ## Blindspots
 
@@ -247,12 +271,26 @@ openmetric price show anthropic/claude-sonnet-4
 
 ```bash
 pip install -e ".[dev]"
-pytest                  # 80+ tests, no network access needed
+pytest                  # 90+ tests, no network access needed
 ruff check .
 ```
 
 Contributions welcome — especially catalog price updates and new provider definitions,
 which are a one-file change. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## How this compares
+
+The problem is real and well served for LLM traffic: LiteLLM has virtual keys and spend
+per tag, Helicone had 16,000 organisations on "change one line, see your costs", and
+providers now ship per-key spend themselves. OpenMetric's slot is narrower than any of
+them: one person or a small team, several projects, several providers *including the
+non-LLM ones*, self-hosted in one command with no Postgres, and a dashboard that reports
+what its own numbers are missing.
+
+If everything you run goes through one OpenRouter account with one key per project, that
+provider's dashboard may already be enough for you. The full, sourced comparison — what
+each tool does, where it stops, and what would make this project unnecessary — is in
+[docs/POSITIONING.md](docs/POSITIONING.md).
 
 ## What this is not
 

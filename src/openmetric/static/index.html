@@ -9,131 +9,249 @@
 </head>
 <body>
 <header>
-  <div>
-    <div class="brand">Open<span>Metric</span></div>
-    <div class="tagline">every key, every project, one number</div>
-  </div>
+  <div class="brand">Open<span>Metric</span></div>
+  <nav class="tabs" id="tabs">
+    <a href="#overview" data-view="overview">Overview</a>
+    <a href="#explore" data-view="explore">Explore</a>
+    <a href="#setup" data-view="setup">Setup</a>
+  </nav>
   <div class="spacer"></div>
-  <div class="filters">
-    <select id="f-days">
-      <option value="1">Last 24h</option>
+  <div class="toolbar">
+    <select id="f-days" title="Time range">
+      <option value="1">Last 24 hours</option>
       <option value="7">Last 7 days</option>
       <option value="30" selected>Last 30 days</option>
       <option value="90">Last 90 days</option>
       <option value="365">Last year</option>
     </select>
-    <select id="f-project"><option value="">All projects</option></select>
-    <select id="f-use-case"><option value="">All use cases</option></select>
-    <select id="f-provider"><option value="">All providers</option></select>
-    <button id="refresh" class="primary">Refresh</button>
-    <button id="export">Export CSV</button>
+    <select id="auto-refresh" title="Auto-refresh">
+      <option value="0">Manual</option>
+      <option value="10">Every 10s</option>
+      <option value="30">Every 30s</option>
+      <option value="60">Every 1m</option>
+    </select>
+    <button id="refresh" class="ghost" title="Refresh (r)">Refresh</button>
+    <button id="theme" class="ghost" title="Toggle light / dark">Theme</button>
   </div>
 </header>
 
-<main>
-  <div class="kpis" id="kpis"></div>
-
-  <div class="card">
-    <h2>Spend over time
-      <select id="ts-dimension">
-        <option value="project">by project</option>
-        <option value="use_case">by use case</option>
-        <option value="provider">by provider</option>
-        <option value="model">by model</option>
-        <option value="credential">by key</option>
-      </select>
-      <select id="ts-bucket">
-        <option value="day" selected>daily</option>
-        <option value="hour">hourly</option>
-        <option value="month">monthly</option>
-      </select>
-      <select id="ts-metric">
-        <option value="cost_usd">cost</option>
-        <option value="requests">requests</option>
-        <option value="total_tokens">tokens</option>
-      </select>
-    </h2>
-    <p class="hint">Stacked. Hover a band for the exact figure.</p>
-    <div id="chart"></div>
-    <div class="legend" id="chart-legend"></div>
+<main id="main">
+  <!-- Filters scope every view below them. Chips show what is active. -->
+  <div class="filterbar" id="filterbar">
+    <select id="f-project"><option value="">All projects</option></select>
+    <select id="f-use-case"><option value="">All use cases</option></select>
+    <select id="f-provider"><option value="">All providers</option></select>
+    <span id="chips"></span>
+    <span class="spacer"></span>
+    <button id="export" class="ghost small">Export CSV</button>
   </div>
 
-  <div class="card">
-    <h2>Blindspots <span id="blindspot-count"></span></h2>
-    <p class="hint">What the numbers above are not telling you.</p>
-    <div id="blindspots"></div>
-  </div>
+  <!-- ======================= OVERVIEW ======================= -->
+  <section class="view" id="view-overview">
+    <div class="card" id="first-run" hidden>
+      <div class="hero">
+        <h1>Waiting for your first request</h1>
+        <p>Point any OpenAI-compatible SDK at this gateway with a virtual key. The moment a call
+           lands, this page turns into your dashboard.</p>
+        <div class="tabs-mini" id="snippet-tabs">
+          <button data-lang="python" class="active">Python</button>
+          <button data-lang="node">Node</button>
+          <button data-lang="curl">curl</button>
+          <button data-lang="env">.env</button>
+        </div>
+        <div class="snippet-wrap">
+          <pre class="snippet" id="snippet"></pre>
+          <button class="copy small" id="copy-snippet">Copy</button>
+        </div>
+        <div class="pulse"><i></i> Listening for the first event&hellip; <a href="#setup">need a virtual key?</a></div>
+      </div>
+    </div>
 
-  <div class="grid">
+    <div class="kpis" id="kpis"></div>
+
     <div class="card">
-      <h2>Breakdown
-        <select id="group-dimension">
-          <option value="project">by project</option>
-          <option value="use_case">by use case</option>
-          <option value="provider">by provider</option>
-          <option value="model">by model</option>
-          <option value="credential">by key</option>
-          <option value="operation">by operation</option>
-          <option value="cost_source">by price source</option>
-        </select>
-        <select id="group-order">
-          <option value="cost_usd">sort by cost</option>
-          <option value="requests">sort by requests</option>
-          <option value="tokens">sort by tokens</option>
-          <option value="errors">sort by errors</option>
-          <option value="latency">sort by latency</option>
-        </select>
+      <h2>Spend over time
+        <span class="viewctl">
+          <select id="ts-dimension">
+            <option value="project">by project</option>
+            <option value="use_case">by use case</option>
+            <option value="provider">by provider</option>
+            <option value="model">by model</option>
+            <option value="credential">by key</option>
+          </select>
+          <select id="ts-bucket">
+            <option value="day" selected>daily</option>
+            <option value="hour">hourly</option>
+            <option value="month">monthly</option>
+          </select>
+          <select id="ts-metric">
+            <option value="cost_usd">cost</option>
+            <option value="requests">requests</option>
+            <option value="total_tokens">tokens</option>
+          </select>
+          <button class="small ghost" id="ts-table-toggle">Table</button>
+        </span>
       </h2>
-      <p class="hint">Same events, different angle.</p>
-      <div class="scroll"><table id="group-table"></table></div>
+      <p class="hint">Stacked. Hover a column for every series at that point.</p>
+      <div class="chart-wrap" id="chart"></div>
+      <div class="legend" id="chart-legend"></div>
+      <div class="scroll" id="chart-table" hidden></div>
     </div>
 
     <div class="card">
-      <h2>Cross-tab
-        <select id="matrix-rows">
-          <option value="project">projects</option>
-          <option value="use_case">use cases</option>
-          <option value="provider">providers</option>
-          <option value="model">models</option>
-          <option value="credential">keys</option>
-        </select>
-        <span class="muted">x</span>
-        <select id="matrix-cols">
-          <option value="use_case">use cases</option>
-          <option value="provider" selected>providers</option>
-          <option value="model">models</option>
-          <option value="project">projects</option>
-          <option value="credential">keys</option>
-        </select>
-        <select id="matrix-metric">
-          <option value="cost_usd">cost</option>
-          <option value="requests">requests</option>
-          <option value="tokens">tokens</option>
-          <option value="errors">errors</option>
-          <option value="avg_latency_ms">avg latency</option>
-        </select>
-      </h2>
-      <p class="hint">Which project spends what, with whom.</p>
-      <div class="scroll"><table id="matrix-table" class="heat"></table></div>
+      <h2>Blindspots <span id="blindspot-count"></span></h2>
+      <p class="hint">What the numbers above are not telling you.</p>
+      <div id="blindspots"></div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2>Budgets</h2>
-    <p class="hint">Month to date, against the limits you set per project.</p>
-    <div class="scroll"><table id="budget-table"></table></div>
-  </div>
+    <div class="card">
+      <h2>Budgets</h2>
+      <p class="hint">Month to date, against the limits you set per project.</p>
+      <div class="scroll"><table id="budget-table"></table></div>
+    </div>
+  </section>
 
-  <div class="card">
-    <h2>Recent calls</h2>
-    <p class="hint">The raw tail. No prompt or response text is stored unless you turn it on.</p>
-    <div class="scroll"><table id="events-table"></table></div>
-  </div>
+  <!-- ======================= EXPLORE ======================= -->
+  <section class="view" id="view-explore" hidden>
+    <div class="grid">
+      <div class="card">
+        <h2>Breakdown
+          <span class="viewctl">
+            <select id="group-dimension">
+              <option value="project">by project</option>
+              <option value="use_case">by use case</option>
+              <option value="provider">by provider</option>
+              <option value="model">by model</option>
+              <option value="credential">by key</option>
+              <option value="operation">by operation</option>
+              <option value="cost_source">by price source</option>
+              <option value="status">by status</option>
+            </select>
+            <select id="group-order">
+              <option value="cost_usd">by cost</option>
+              <option value="requests">by requests</option>
+              <option value="tokens">by tokens</option>
+              <option value="errors">by errors</option>
+              <option value="latency">by latency</option>
+            </select>
+          </span>
+        </h2>
+        <p class="hint">Click a row to filter everything to it.</p>
+        <div class="scroll"><table id="group-table"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Cross-tab
+          <span class="viewctl">
+            <select id="matrix-rows">
+              <option value="project">projects</option>
+              <option value="use_case">use cases</option>
+              <option value="provider">providers</option>
+              <option value="model">models</option>
+              <option value="credential">keys</option>
+            </select>
+            <select id="matrix-cols">
+              <option value="use_case">use cases</option>
+              <option value="provider" selected>providers</option>
+              <option value="model">models</option>
+              <option value="project">projects</option>
+              <option value="credential">keys</option>
+            </select>
+            <select id="matrix-metric">
+              <option value="cost_usd">cost</option>
+              <option value="requests">requests</option>
+              <option value="tokens">tokens</option>
+              <option value="errors">errors</option>
+              <option value="avg_latency_ms">avg latency</option>
+            </select>
+          </span>
+        </h2>
+        <p class="hint">Click a cell to filter to that intersection.</p>
+        <div class="scroll"><table id="matrix-table" class="heat"></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recent calls <span class="pill muted" id="events-count"></span></h2>
+      <p class="hint">The raw tail. No prompt or response text is stored unless you turn it on.</p>
+      <div class="scroll"><table id="events-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ======================= SETUP ======================= -->
+  <section class="view" id="view-setup" hidden>
+    <div class="grid">
+      <div class="card">
+        <h2>Getting started <span class="pill muted" id="setup-progress-label"></span></h2>
+        <div class="progress"><i id="setup-progress"></i></div>
+        <div class="checklist" id="checklist"></div>
+        <p class="form-note" id="setup-gateway"></p>
+      </div>
+
+      <div class="card">
+        <h2>Connect an app</h2>
+        <p class="hint">Change two lines. Everything else stays the same.</p>
+        <div class="tabs-mini" id="snippet-tabs-2">
+          <button data-lang="python" class="active">Python</button>
+          <button data-lang="node">Node</button>
+          <button data-lang="curl">curl</button>
+          <button data-lang="env">.env</button>
+        </div>
+        <div class="snippet-wrap">
+          <pre class="snippet" id="snippet-2"></pre>
+          <button class="copy small" id="copy-snippet-2">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Provider keys</h2>
+      <p class="hint">Encrypted at rest. Only the hint is ever shown again. Bind a key to a project, or leave it shared.</p>
+      <form class="inline" id="form-credential">
+        <label class="field">Provider <select name="provider" id="cred-provider" required></select></label>
+        <label class="field">Label <input name="label" placeholder="openrouter-personal" required></label>
+        <label class="field">Project (optional) <select name="project" id="cred-project"><option value="">shared</option></select></label>
+        <label class="field">API key <input name="api_key" type="password" autocomplete="off" placeholder="paste the provider key" required></label>
+        <button class="primary" type="submit">Store key</button>
+      </form>
+      <p class="form-note">Sent only to this gateway on your machine. Prefer the terminal? <code>openmetric key add &lt;provider&gt; --label &lt;name&gt;</code></p>
+      <div class="scroll"><table id="credentials-table"></table></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Projects</h2>
+        <p class="hint">A budget turns into an alert under Blindspots when exceeded.</p>
+        <form class="inline" id="form-project">
+          <label class="field">Slug <input name="slug" placeholder="recipe-app" pattern="[a-z0-9\-]+" required></label>
+          <label class="field">Monthly budget (USD) <input name="monthly_budget_usd" type="number" step="0.01" min="0" placeholder="25"></label>
+          <button class="primary" type="submit">Add project</button>
+        </form>
+        <div class="scroll"><table id="projects-table"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Virtual keys</h2>
+        <p class="hint">What your application holds instead of a provider key. Shown once.</p>
+        <form class="inline" id="form-vkey">
+          <label class="field">Name <input name="name" placeholder="recipe-app-prod" required></label>
+          <label class="field">Project <select name="project" id="vkey-project"><option value="">none</option></select></label>
+          <label class="field">Use case (optional) <input name="use_case" placeholder="llm-summary"></label>
+          <label class="field">Pin to key (optional) <select name="credential_label" id="vkey-credential"><option value="">auto by provider</option></select></label>
+          <button class="primary" type="submit">Issue key</button>
+        </form>
+        <div class="scroll"><table id="vkeys-table"></table></div>
+      </div>
+    </div>
+  </section>
 </main>
 
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
 <footer>
-  OpenMetric runs entirely on your machine. Keys are encrypted at rest and never
-  returned by the API. &middot; <a href="/docs">API docs</a>
+  Runs entirely on your machine. Keys are encrypted at rest and never returned by the API.
+  &middot; <a href="/docs">API docs</a> &middot; <span class="kbd">r</span> refresh &middot; <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> switch views
 </footer>
 
 <script src="/static/app.js"></script>

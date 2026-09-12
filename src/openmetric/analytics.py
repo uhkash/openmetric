@@ -144,6 +144,48 @@ def summary(session: Session, filters: Filters) -> dict[str, Any]:
     return data
 
 
+def summary_with_comparison(session: Session, filters: Filters) -> dict[str, Any]:
+    """Headline totals plus the same window immediately before it, for deltas."""
+    current = summary(session, filters)
+    since, until = filters.window()
+    span = until - since
+    previous_filters = Filters(
+        since=since - span,
+        until=since,
+        project=filters.project,
+        use_case=filters.use_case,
+        provider=filters.provider,
+        model=filters.model,
+        credential=filters.credential,
+        only_errors=filters.only_errors,
+        exclude_errors=filters.exclude_errors,
+    )
+    previous = summary(session, previous_filters)
+
+    def delta(key: str) -> float | None:
+        before, now = previous.get(key) or 0, current.get(key) or 0
+        if not before:
+            return None
+        return round((now - before) / before * 100, 1)
+
+    current["previous"] = {
+        "requests": previous["requests"],
+        "cost_usd": previous["cost_usd"],
+        "total_tokens": previous["total_tokens"],
+        "error_rate": previous["error_rate"],
+        "p95_latency_ms": previous["p95_latency_ms"],
+        "unpriced_requests": previous["unpriced_requests"],
+    }
+    current["delta_pct"] = {
+        "requests": delta("requests"),
+        "cost_usd": delta("cost_usd"),
+        "total_tokens": delta("total_tokens"),
+        "error_rate": delta("error_rate"),
+        "p95_latency_ms": delta("p95_latency_ms"),
+    }
+    return current
+
+
 def percentile_latency(session: Session, filters: Filters, quantile: float = 0.95) -> int:
     """Portable percentile: works the same on SQLite and Postgres."""
     total = session.scalar(_apply(select(func.count(RequestEvent.id)), filters)) or 0
