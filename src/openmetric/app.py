@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
             "to turn it off."
         )
     yield
+    await gateway.close_client()
 
 
 def create_app() -> FastAPI:

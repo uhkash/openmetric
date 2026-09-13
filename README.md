@@ -364,6 +364,40 @@ provider's dashboard may already be enough for you. The full, sourced comparison
 each tool does, where it stops, and what would make this project unnecessary — is in
 [docs/POSITIONING.md](docs/POSITIONING.md).
 
+## Performance and limits
+
+Measured on one container against a local mock provider, so these are gateway overhead
+rather than provider latency. 200 requests per run:
+
+| Concurrency | Throughput | p50 added latency | p95 |
+|---|---|---|---|
+| 1 | 134 req/s | 7ms | 9ms |
+| 10 | 150 req/s | 63ms | 107ms |
+| 50 | 127 req/s | 319ms | 846ms |
+
+Every one of those calls was measured, priced and attributed — nothing is dropped under
+load. For context: a solo builder running four projects is nowhere near this. At 130
+req/s you would have to sustain 11 million calls a day.
+
+**The limits you will actually hit, in the order you will hit them:**
+
+1. **It is a single point of failure.** Every API call in every project now goes through
+   one process. If it is down, they all fail. There is no built-in failover; the gateway
+   measures, it does not route around outages. Run it under systemd, Docker's
+   `restart: unless-stopped`, or a platform that restarts it — and know that a gateway
+   outage is a total outage.
+2. **One SQLite writer.** Each proxied call writes an event synchronously. That is ~1ms
+   and fine into the hundreds of requests per second, but it is a single-writer database
+   on the request path. Past that, point `OPENMETRIC_DATABASE_URL` at Postgres.
+3. **One process, one event loop.** There is no worker pool. `uvicorn --workers N` will
+   not help while the database is SQLite, because the writers would contend.
+4. **No rate limiting, retries or failover.** Deliberately: this is a measuring
+   instrument, not a router. If you need those, put them in your client or use a gateway
+   built for it.
+
+Streaming is passed through unbuffered, so a long completion holds a connection for its
+whole duration — which is normal for a proxy, but counts against the connection pool.
+
 ## Why is this free, and how does it make money?
 
 Because the people it is for — one builder, several projects — are exactly the people who

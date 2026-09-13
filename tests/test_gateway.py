@@ -253,3 +253,27 @@ def test_unknown_provider_is_rejected(client):
     response = client.post("/proxy/not-a-provider/v1/chat", json={})
     assert response.status_code == 404
     assert "Unknown provider" in response.json()["detail"]
+
+
+@respx.mock
+def test_the_http_client_is_shared_across_requests(configured):
+    """A fresh AsyncClient per request costs ~50ms building an SSL context.
+
+    That capped the gateway at ~15 req/s regardless of concurrency. The client is
+    now created once per process, which also keeps connections alive to the provider.
+    """
+    from openmetric import gateway
+
+    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json=CHAT_RESPONSE)
+    )
+    call = lambda: configured["client"].post(  # noqa: E731
+        "/v1/chat/completions",
+        headers={"Authorization": f"Bearer {configured['token']}"},
+        json={"model": "openai/gpt-4o-mini", "messages": []},
+    )
+    assert call().status_code == 200
+    first = gateway.get_client()
+    assert call().status_code == 200
+    assert gateway.get_client() is first, "a new client was built for the second request"
+    assert not first.is_closed, "the shared client must outlive the request that used it"

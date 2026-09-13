@@ -57,6 +57,40 @@ MAX_CAPTURED_STREAM_BYTES = 2 * 1024 * 1024
 MAX_LOGGED_BODY_CHARS = 20_000
 
 
+# --------------------------------------------------------------------------- #
+# Upstream HTTP client
+# --------------------------------------------------------------------------- #
+
+_client: httpx.AsyncClient | None = None
+
+
+def get_client() -> httpx.AsyncClient:
+    """One shared client for the whole process.
+
+    Building an AsyncClient per request costs ~50ms, almost all of it creating a
+    fresh SSL context and parsing the system CA bundle - which capped the gateway
+    at ~15 requests/second no matter how many arrived at once. Sharing one client
+    also keeps connections alive, so a real HTTPS provider is not re-handshaked on
+    every call.
+    """
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            timeout=get_settings().timeout_seconds,
+            follow_redirects=False,
+            limits=httpx.Limits(max_connections=200, max_keepalive_connections=50),
+        )
+    return _client
+
+
+async def close_client() -> None:
+    """Shut the shared client down (app shutdown, and between tests)."""
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+    _client = None
+
+
 @dataclass
 class CallContext:
     """Everything we know about a call before it is sent upstream."""
@@ -398,7 +432,6 @@ def record_event(
 
 
 async def _proxy(request: Request, provider_slug: str | None, path: str) -> Any:
-    settings = get_settings()
     body = await request.body()
     model = _model_from_body(body)
 
@@ -426,14 +459,13 @@ async def _proxy(request: Request, provider_slug: str | None, path: str) -> Any:
     streaming = _wants_stream(outbound) or "text/event-stream" in request.headers.get("accept", "")
     started = time.perf_counter()
 
-    client = httpx.AsyncClient(timeout=settings.timeout_seconds, follow_redirects=False)
+    client = get_client()
     try:
         upstream_request = client.build_request(
             request.method, url, headers=headers, content=outbound or None
         )
         response = await client.send(upstream_request, stream=streaming)
     except httpx.HTTPError as exc:
-        await client.aclose()
         latency = int((time.perf_counter() - started) * 1000)
         record_event(
             ctx_ids=ctx_ids,
@@ -468,7 +500,6 @@ async def _proxy(request: Request, provider_slug: str | None, path: str) -> Any:
 
     if not streaming:
         raw = await response.aread()
-        await client.aclose()
         latency = int((time.perf_counter() - started) * 1000)
         try:
             decoded = json.loads(raw)
@@ -518,7 +549,6 @@ async def _proxy(request: Request, provider_slug: str | None, path: str) -> Any:
             latency = int((time.perf_counter() - started) * 1000)
             parsed = usage_mod.extract_usage_from_sse(captured)
             await response.aclose()
-            await client.aclose()
             record_event(
                 ctx_ids=ctx_ids,
                 model=model or parsed.model,
