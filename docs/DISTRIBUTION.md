@@ -113,7 +113,7 @@ start and priced on seats, not logs, which the audience will find honest.
 ### The funnel, and how not to be annoying
 
 ```
-README (one line: "want it hosted? → openmetric.dev")
+README (one line: "want it hosted? → openmetric.vercel.app")
    └─▶ site (Vercel): pain → demo → self-host CTA and Cloud CTA side by side
           └─▶ waitlist (Tally / Loops / a form): email + "how many projects, how many people"
                  └─▶ Cloud
@@ -130,8 +130,12 @@ README (one line: "want it hosted? → openmetric.dev")
 ### Sequence
 
 1. Merge to `main`, tag `v0.1.0`, publish to PyPI. *(Now.)*
-2. Deploy `site/` to Vercel with a real domain. Replace the waitlist placeholder with a
-   real form. Upload `og.png` as the social preview. Set topics.
+2. ~~Deploy `site/` to Vercel~~ — live at
+   [openmetric.vercel.app](https://openmetric.vercel.app). Still to do by hand: buy a real
+   domain and point it at the project (then change the four absolute URLs at the top of
+   `site/index.html`, plus `robots.txt` and `sitemap.xml`); replace the waitlist
+   placeholder with a real form; upload `site/og.png` as the repo's social preview;
+   set repository topics.
 3. Show HN + the Helicone-migration post. Watch what people ask for.
 4. Build Cloud only from what the waitlist and issues actually say — the first three
    asks will probably be alerts, a hosted URL, and team keys, in some order.

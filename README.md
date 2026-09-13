@@ -8,13 +8,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
+**[openmetric.vercel.app](https://openmetric.vercel.app)**
+
 Self-hosted. Your keys and your usage data never leave your machine.
 
 ![OpenMetric dashboard](docs/screenshot.png)
 
 </div>
 
-> **Would rather not run it yourself?** OpenMetric Cloud — the same gateway, hosted, with
+> **Would rather not run it yourself?** [OpenMetric Cloud](https://openmetric.vercel.app/#cloud) — the same gateway, hosted, with
 > teams and alerts — is in early access. [Join the waitlist](https://github.com/uhkash/openmetric/issues/new?title=Cloud%20waitlist&labels=cloud-waitlist).
 > The self-hosted version stays complete, MIT-licensed, and gate-free. [How that works →](docs/DISTRIBUTION.md)
 
@@ -251,7 +253,7 @@ There are two deployable things here, and they go to different places:
 | What | Where | How |
 |---|---|---|
 | **The gateway** (`src/openmetric`) | Your laptop, Docker, Render, Railway, Fly — anywhere with a disk and a long-lived process | `docker compose up -d`, or the one-click [`render.yaml`](render.yaml) |
-| **The website** (`site/`) | Vercel (or any static host) | `vercel` from the repo root; [`vercel.json`](vercel.json) points at `site/` |
+| **The website** (`site/`) | Vercel — live at [openmetric.vercel.app](https://openmetric.vercel.app) | `vercel` from the repo root; [`vercel.json`](vercel.json) points at `site/`. Pushes to `main` redeploy it |
 
 The gateway is a streaming proxy with a SQLite file. It does not belong on serverless
 functions: they have no persistent disk and cut long streaming responses off. If you
