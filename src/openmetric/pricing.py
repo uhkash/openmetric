@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import copy
 import os
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -40,19 +39,46 @@ def _deep_merge(base: dict, extra: dict) -> dict:
     return out
 
 
-@lru_cache
+_catalog: dict[str, Any] | None = None
+_catalog_stamp: tuple[str, float, int] | None = None
+
+
+def _local_stamp() -> tuple[str, float, int]:
+    """Identity of the override file: path, mtime, size. Size catches same-second edits."""
+    path = local_pricing_path()
+    try:
+        stat = path.stat()
+        return (str(path), stat.st_mtime, stat.st_size)
+    except OSError:
+        return (str(path), 0.0, -1)
+
+
 def load_catalog() -> dict[str, Any]:
-    """Built-in catalog merged with ./pricing.local.yaml if present."""
+    """Built-in catalog merged with ./pricing.local.yaml if present.
+
+    Cached, but re-read whenever the override file changes on disk. Without that,
+    `openmetric price set` would only take effect after restarting the gateway -
+    and the CLI would be lying when it says new calls are priced with it.
+    """
+    global _catalog, _catalog_stamp
+    stamp = _local_stamp()
+    if _catalog is not None and stamp == _catalog_stamp:
+        return _catalog
+
     catalog = yaml.safe_load(BUILTIN_CATALOG.read_text()) or {}
     local = local_pricing_path()
     if local.exists():
         overrides = yaml.safe_load(local.read_text()) or {}
         catalog = _deep_merge(catalog, overrides)
+    _catalog, _catalog_stamp = catalog, stamp
     return catalog
 
 
 def reload_catalog() -> None:
-    load_catalog.cache_clear()
+    """Force a re-read on the next lookup (used by the CLI and tests)."""
+    global _catalog, _catalog_stamp
+    _catalog = None
+    _catalog_stamp = None
 
 
 def provider_defaults(slug: str) -> dict[str, Any]:

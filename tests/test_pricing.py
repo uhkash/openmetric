@@ -52,3 +52,44 @@ def test_local_override_can_add_an_unknown_model():
 def test_prefix_pattern_is_a_last_resort():
     cost, source = pricing.price_tokens("gpt-4o-2024-11-20", 1_000_000, 0)
     assert (cost, source) == (2.5, pricing.CATALOG)
+
+
+def test_price_changes_are_picked_up_without_restarting_the_process():
+    """A running gateway must see `openmetric price set`, not need a restart.
+
+    The CLI tells you "new calls will be priced with it". Before this was fixed,
+    that was false for an already-running server: the catalog was cached for the
+    life of the process, so every call kept recording as unpriced.
+    """
+    import yaml
+
+    assert pricing.price_units("firecrawl", 1)[1] == pricing.UNKNOWN  # warms the cache
+
+    # Another process (the CLI) writes the override. No reload call here on purpose.
+    pricing.local_pricing_path().write_text(
+        yaml.safe_dump({"providers": {"firecrawl": {"unit_price_usd": 0.002}}})
+    )
+    cost, source, _ = pricing.price_units("firecrawl", 1)
+    assert (cost, source) == (0.002, pricing.CATALOG)
+
+
+def test_a_later_edit_to_the_same_file_is_also_seen():
+    import yaml
+
+    path = pricing.local_pricing_path()
+    path.write_text(yaml.safe_dump({"providers": {"serper": {"unit_price_usd": 0.001}}}))
+    assert pricing.price_units("serper", 1)[0] == 0.001
+
+    path.write_text(
+        yaml.safe_dump({"providers": {"serper": {"unit_price_usd": 0.25, "unit_kind": "search"}}})
+    )
+    cost, source, unit = pricing.price_units("serper", 1)
+    assert (cost, source, unit) == (0.25, pricing.CATALOG, "search")
+
+
+def test_a_provider_absent_from_the_catalog_can_be_priced_entirely_from_the_override():
+    """Any API you add yourself is priceable - nothing needs to ship in catalog.yaml."""
+    assert pricing.provider_defaults("some-api-nobody-shipped") == {}
+    pricing.set_local_price(provider="some-api-nobody-shipped", per_request=0.004)
+    cost, source, _ = pricing.price_units("some-api-nobody-shipped", 3)
+    assert (cost, source) == (0.012, pricing.CATALOG)

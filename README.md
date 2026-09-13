@@ -267,16 +267,64 @@ docker compose up -d
 Releases: tag `vX.Y.Z` and the [`Release`](.github/workflows/release.yml) workflow
 publishes to PyPI (via trusted publishing) and creates a GitHub release.
 
-## Built-in providers
+## Providers: the catalog is a convenience, not a limit
 
-`openrouter`, `openai`, `anthropic`, `groq`, `deepseek`, `mistral`, `together`, `perplexity`,
-`firecrawl`, `serper`, `tavily`, `exa`, `scrapingbee`, `apify`, `resend`.
+Fifteen providers ship configured — `openrouter`, `openai`, `anthropic`, `groq`,
+`deepseek`, `mistral`, `together`, `perplexity`, `firecrawl`, `serper`, `tavily`, `exa`,
+`scrapingbee`, `apify`, `resend` — so those work with nothing but a key.
 
-Anything else works too — it is an HTTP proxy:
+**Everything else works too.** The gateway is a generic HTTP proxy; the catalog only
+supplies defaults. Any REST API you pay for can be added in one command and is measured
+from the first call:
 
 ```bash
-openmetric provider add myapi --base-url https://api.example.com/v1 --kind other
+openmetric provider add weatherapi \
+  --base-url https://api.weatherapi.com/v1 \
+  --kind other \
+  --auth-style query --auth-query-param key      # ?key=... instead of a header
+
+openmetric key add weatherapi --label weather-main
+openmetric price set weatherapi --per-request 0.004
 ```
+
+Then call it exactly as you would have, through `/proxy/weatherapi/...`:
+
+```bash
+curl -X POST http://localhost:8099/proxy/weatherapi/forecast.json \
+  -H "Authorization: Bearer $OPENMETRIC_KEY" \
+  -H "X-OpenMetric-Project: trip-planner" \
+  -H "X-OpenMetric-Use-Case: forecasts"
+```
+
+GET, POST, PUT, PATCH and DELETE all pass through, with the path, query string and body
+untouched. Four auth styles cover almost everything:
+
+| `--auth-style` | What the gateway sends |
+|---|---|
+| `bearer` (default) | `Authorization: Bearer <key>` |
+| `header` | a header you name, e.g. `--auth-header X-API-KEY` |
+| `query` | a query parameter you name, e.g. `--auth-query-param api_key` |
+| `basic` | `Authorization: Basic <key>` |
+
+### What it will not do (yet)
+
+Be aware of these before assuming an API fits:
+
+- **Auth schemes beyond those four.** OAuth2 with a refresh-token dance, AWS SigV4, or
+  per-request HMAC signing need code, not configuration. A static secret in a header,
+  query parameter or bearer token is the supported shape.
+- **Pricing shapes other than per-token and per-unit.** Per-byte, per-compute-second and
+  tiered or committed-use pricing cannot be expressed. Anything unpriceable is reported
+  as *unpriced* rather than guessed at.
+- **Token counts from an unfamiliar LLM response shape.** OpenAI, Anthropic and Gemini
+  shapes are parsed; a novel one needs a few lines in
+  [`usage.py`](src/openmetric/usage.py) (and a PR would be welcome).
+- **Non-HTTP protocols.** gRPC, WebSockets and SDKs that do not speak plain HTTP are out
+  of scope.
+
+For a non-LLM API, one call counts as one billing unit unless the response contains a
+`results`, `data`, `organic` or `items` array — then each entry counts, which matches how
+most search and scraping APIs actually bill.
 
 ## How pricing works
 
